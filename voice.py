@@ -8,7 +8,7 @@ from rich.panel import Panel
 speech_process = None
 
 
-def speak(text: str) -> None:
+def speak(text: str, wait: bool = True) -> None:
     global speech_process
     
     # Strip newlines to prevent command issues
@@ -17,7 +17,12 @@ def speak(text: str) -> None:
     if platform.system() == "Windows":
         safe_text_win = clean_text.replace("'", "''")
         ps_script = f"Add-Type -AssemblyName System.speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{safe_text_win}')"
-        speech_process = subprocess.Popen(["powershell", "-Command", ps_script])
+        # Hide the PowerShell window
+        creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+        speech_process = subprocess.Popen(
+            ["powershell", "-Command", ps_script], 
+            creationflags=creationflags
+        )
     elif platform.system() == "Darwin":
         safe_text_mac = clean_text.replace('"', '\\"')
         speech_process = subprocess.Popen(["say", "-v", "Samantha", safe_text_mac])
@@ -27,6 +32,9 @@ def speak(text: str) -> None:
             speech_process = subprocess.Popen(["espeak", safe_text_linux])
         except FileNotFoundError:
             pass
+            
+    if wait and speech_process:
+        speech_process.wait()
 
 
 def stop_speaking() -> None:
